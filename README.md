@@ -52,6 +52,12 @@ This project is in **Phase 2: Repository & Codebase Indexing**. The foundation i
 - [ ] DoD analysis agents
 - [ ] PR verification agents
 
+### 🔮 Planned Features
+- [ ] **State Management & Anti-Spam System**: Redis-based caching to prevent duplicate analysis and spam
+- [ ] **Smart Change Detection**: Only re-analyze when content meaningfully changes
+- [ ] **Configurable Cache TTL**: Time-based cache expiration with manual override
+- [ ] **Analysis History**: Track and compare analysis results over time
+
 ## 🛠️ Installation
 
 ### Prerequisites

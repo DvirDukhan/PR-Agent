@@ -104,6 +104,18 @@ class AppConfig(BaseSettings):
     cache_ttl: int = Field(300, alias="CACHE_TTL")
 
 
+class CacheConfig(BaseSettings):
+    """Cache and state management configuration."""
+
+    default_ttl: int = Field(3600, alias="CACHE_DEFAULT_TTL")  # 1 hour
+    max_ttl: int = Field(86400, alias="CACHE_MAX_TTL")  # 24 hours
+    retention_days: int = Field(30, alias="CACHE_RETENTION_DAYS")
+    cleanup_interval: int = Field(3600, alias="CACHE_CLEANUP_INTERVAL")  # 1 hour
+    force_refresh_threshold: int = Field(7200, alias="CACHE_FORCE_REFRESH_THRESHOLD")  # 2 hours
+    enable_caching: bool = Field(True, alias="CACHE_ENABLE")
+    hash_algorithm: str = Field("sha256", alias="CACHE_HASH_ALGORITHM")
+
+
 class Config:
     """Main configuration class that combines all configuration sections."""
 
@@ -125,6 +137,7 @@ class Config:
         self.redis = RedisConfig()
         self.repository = RepositoryConfig()
         self.app = AppConfig()
+        self.cache = CacheConfig()
 
     def validate(self) -> None:
         """Validate configuration and raise errors for missing required values."""
