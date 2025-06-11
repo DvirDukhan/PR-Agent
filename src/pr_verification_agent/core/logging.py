@@ -15,10 +15,10 @@ from .config import config
 def setup_logging(
     level: Optional[str] = None,
     format_type: Optional[str] = None,
-    log_file: Optional[str] = None
+    log_file: Optional[str] = None,
 ) -> None:
     """Set up logging configuration.
-    
+
     Args:
         level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         format_type: Log format ('json' or 'console')
@@ -26,7 +26,7 @@ def setup_logging(
     """
     level = level or config.app.log_level
     format_type = format_type or config.app.log_format
-    
+
     # Configure structlog
     structlog.configure(
         processors=[
@@ -38,21 +38,23 @@ def setup_logging(
             structlog.processors.StackInfoRenderer(),
             structlog.processors.format_exc_info,
             structlog.processors.UnicodeDecoder(),
-            structlog.processors.JSONRenderer() if format_type == "json" else structlog.dev.ConsoleRenderer(),
+            (
+                structlog.processors.JSONRenderer()
+                if format_type == "json"
+                else structlog.dev.ConsoleRenderer()
+            ),
         ],
         context_class=dict,
         logger_factory=structlog.stdlib.LoggerFactory(),
         wrapper_class=structlog.stdlib.BoundLogger,
         cache_logger_on_first_use=True,
     )
-    
+
     # Configure standard library logging
     logging.basicConfig(
-        level=getattr(logging, level.upper()),
-        format="%(message)s",
-        handlers=[]
+        level=getattr(logging, level.upper()), format="%(message)s", handlers=[]
     )
-    
+
     # Add console handler
     if format_type == "console":
         console = Console(stderr=True)
@@ -61,25 +63,25 @@ def setup_logging(
             show_time=True,
             show_path=True,
             markup=True,
-            rich_tracebacks=True
+            rich_tracebacks=True,
         )
     else:
         console_handler = logging.StreamHandler(sys.stderr)
-    
+
     logging.getLogger().addHandler(console_handler)
-    
+
     # Add file handler if specified
     if log_file:
         log_path = Path(log_file)
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         file_handler = logging.FileHandler(log_path)
         file_formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         )
         file_handler.setFormatter(file_formatter)
         logging.getLogger().addHandler(file_handler)
-    
+
     # Suppress noisy third-party loggers
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("requests").setLevel(logging.WARNING)
@@ -88,10 +90,10 @@ def setup_logging(
 
 def get_logger(name: str) -> structlog.stdlib.BoundLogger:
     """Get a structured logger instance.
-    
+
     Args:
         name: Logger name (usually __name__)
-        
+
     Returns:
         Configured structlog logger
     """

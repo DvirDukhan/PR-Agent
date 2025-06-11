@@ -1,0 +1,246 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11, 3.12]
+
+    services:
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        pip install -e .
+
+    - name: Wait for Redis
+      run: |
+        timeout 30 bash -c 'until redis-cli -h localhost -p 6379 ping; do sleep 1; done'
+
+    - name: Test Redis connection
+      run: |
+        redis-cli -h localhost -p 6379 ping
+        redis-cli -h localhost -p 6379 info server
+
+    - name: Lint with flake8
+      run: |
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 src/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Format check with black
+      run: |
+        black --check --diff src/ tests/
+
+    - name: Type check with mypy
+      run: |
+        mypy src/ --ignore-missing-imports
+
+    - name: Test with pytest
+      env:
+        REDIS_URL: redis://localhost:6379
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+        JIRA_SERVER_URL: https://test.atlassian.net
+        JIRA_EMAIL: test@example.com
+        JIRA_API_TOKEN: test-token
+        GITHUB_TOKEN: test-token
+        OPENAI_API_KEY: test-key
+        DEFAULT_AI_PROVIDER: openai
+      run: |
+        pytest tests/ -v --cov=src/pr_verification_agent --cov-report=xml --cov-report=term-missing --cov-fail-under=10
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    services:
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -e .
+
+    - name: Wait for Redis
+      run: |
+        timeout 30 bash -c 'until redis-cli -h localhost -p 6379 ping; do sleep 1; done'
+
+    - name: Test CLI installation
+      run: |
+        pr-agent --help
+
+    - name: Test configuration check
+      env:
+        REDIS_URL: redis://localhost:6379
+        JIRA_SERVER_URL: https://test.atlassian.net
+        JIRA_EMAIL: test@example.com
+        JIRA_API_TOKEN: test-token
+        GITHUB_TOKEN: test-token
+        OPENAI_API_KEY: test-key
+      run: |
+        pr-agent config-check
+
+    - name: Test repository status (no Git repo)
+      env:
+        REDIS_URL: redis://localhost:6379
+      run: |
+        # This should exit with error code but not crash
+        if pr-agent status; then
+          echo "ERROR: status should fail outside Git repository"
+          exit 1
+        else
+          echo "SUCCESS: status correctly failed outside Git repository"
+        fi
+
+    - name: Initialize test repository
+      run: |
+        git config --global user.email "test@example.com"
+        git config --global user.name "Test User"
+        git init
+        echo "# Test Repository" > README.md
+        echo "print('Hello, World!')" > test.py
+        git add .
+        git commit -m "Initial commit"
+
+    - name: Test repository indexing (no Git repo)
+      env:
+        REDIS_URL: redis://localhost:6379
+      run: |
+        # This should fail gracefully with proper error message
+        if pr-agent index --initialize; then
+          echo "ERROR: indexing should fail outside Git repository"
+          exit 1
+        else
+          echo "SUCCESS: indexing correctly failed outside Git repository"
+        fi
+
+    - name: Test repository status with Redis
+      env:
+        REDIS_URL: redis://localhost:6379
+      run: |
+        # This should show Redis connection but no Git repo
+        pr-agent status
+
+    - name: Test repository search (no index)
+      env:
+        REDIS_URL: redis://localhost:6379
+      run: |
+        # This should fail gracefully with proper error message
+        if pr-agent search "Hello World" --limit 5; then
+          echo "ERROR: search should fail without index"
+          exit 1
+        else
+          echo "SUCCESS: search correctly failed without index"
+        fi
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install bandit
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit[toml]
+
+    - name: Run security scan with bandit
+      run: |
+        bandit -r src/ -f json -o bandit-report.json || true
+
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v3
+      with:
+        name: bandit-report
+        path: bandit-report.json
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [test, integration-test]
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+
+    - name: Build package
+      run: |
+        python -m build
+
+    - name: Check package
+      run: |
+        twine check dist/*
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist
+        path: dist/

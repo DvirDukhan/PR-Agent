@@ -21,38 +21,31 @@ logger = get_logger(__name__)
 @click.option(
     "--config-file",
     type=click.Path(exists=True, path_type=Path),
-    help="Path to configuration file"
+    help="Path to configuration file",
 )
 @click.option(
     "--log-level",
     type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]),
-    help="Set logging level"
+    help="Set logging level",
 )
-@click.option(
-    "--log-file",
-    type=click.Path(path_type=Path),
-    help="Path to log file"
-)
+@click.option("--log-file", type=click.Path(path_type=Path), help="Path to log file")
 @click.version_option()
 def cli(
-    config_file: Optional[Path],
-    log_level: Optional[str],
-    log_file: Optional[Path]
+    config_file: Optional[Path], log_level: Optional[str], log_file: Optional[Path]
 ) -> None:
     """PR Verification Agent - Verify GitHub PRs against Jira Definition of Done."""
     try:
         # Setup logging
-        setup_logging(
-            level=log_level,
-            log_file=str(log_file) if log_file else None
-        )
-        
+        setup_logging(level=log_level, log_file=str(log_file) if log_file else None)
+
         # Validate configuration
         config.validate()
-        
-        logger.info("PR Verification Agent initialized", 
-                   config_file=str(config_file) if config_file else None)
-        
+
+        logger.info(
+            "PR Verification Agent initialized",
+            config_file=str(config_file) if config_file else None,
+        )
+
     except Exception as e:
         console.print(f"[red]Configuration error: {e}[/red]")
         sys.exit(1)
@@ -61,20 +54,23 @@ def cli(
 @cli.command()
 def chat() -> None:
     """Start interactive chat mode for PR verification."""
-    console.print(Panel.fit(
-        Text("🤖 PR Verification Agent", style="bold blue"),
-        subtitle="Interactive Chat Mode"
-    ))
-    
+    console.print(
+        Panel.fit(
+            Text("🤖 PR Verification Agent", style="bold blue"),
+            subtitle="Interactive Chat Mode",
+        )
+    )
+
     console.print("\n[green]Welcome to the PR Verification Agent![/green]")
     console.print("I can help you:")
     console.print("• Analyze and improve Jira Definition of Done quality")
     console.print("• Verify GitHub pull requests against DoD requirements")
     console.print("• Provide confidence scores and improvement suggestions")
     console.print("\nType 'help' for available commands or 'quit' to exit.\n")
-    
+
     try:
         from .agents.chat_agent import ChatAgent
+
         chat_agent = ChatAgent()
         chat_agent.start_conversation()
     except ImportError:
@@ -86,18 +82,20 @@ def chat() -> None:
 @click.argument("jira_ticket")
 def analyze_dod(jira_ticket: str) -> None:
     """Analyze Definition of Done quality for a Jira ticket.
-    
+
     Args:
         jira_ticket: Jira ticket ID (e.g., PROJ-123)
     """
-    console.print(f"[blue]Analyzing Definition of Done for ticket: {jira_ticket}[/blue]")
-    
+    console.print(
+        f"[blue]Analyzing Definition of Done for ticket: {jira_ticket}[/blue]"
+    )
+
     try:
         # TODO: Implement DoD analysis
         console.print("[yellow]DoD analysis not yet implemented. Coming soon![/yellow]")
         console.print(f"This will analyze the Definition of Done for {jira_ticket}")
         console.print("and provide suggestions for improvement.")
-        
+
     except Exception as e:
         logger.error("Failed to analyze DoD", ticket=jira_ticket, error=str(e))
         console.print(f"[red]Error analyzing DoD: {e}[/red]")
@@ -108,7 +106,7 @@ def analyze_dod(jira_ticket: str) -> None:
 @click.option("--jira-ticket", help="Associated Jira ticket ID")
 def verify_pr(pr_url: str, jira_ticket: Optional[str]) -> None:
     """Verify a GitHub pull request against Definition of Done.
-    
+
     Args:
         pr_url: GitHub pull request URL
         jira_ticket: Optional Jira ticket ID for DoD reference
@@ -116,17 +114,21 @@ def verify_pr(pr_url: str, jira_ticket: Optional[str]) -> None:
     console.print(f"[blue]Verifying PR: {pr_url}[/blue]")
     if jira_ticket:
         console.print(f"[blue]Against Jira ticket: {jira_ticket}[/blue]")
-    
+
     try:
         # TODO: Implement PR verification
-        console.print("[yellow]PR verification not yet implemented. Coming soon![/yellow]")
+        console.print(
+            "[yellow]PR verification not yet implemented. Coming soon![/yellow]"
+        )
         console.print(f"This will verify {pr_url} against the Definition of Done")
         if jira_ticket:
             console.print(f"from Jira ticket {jira_ticket}")
         console.print("and provide a confidence score with improvement suggestions.")
-        
+
     except Exception as e:
-        logger.error("Failed to verify PR", pr_url=pr_url, ticket=jira_ticket, error=str(e))
+        logger.error(
+            "Failed to verify PR", pr_url=pr_url, ticket=jira_ticket, error=str(e)
+        )
         console.print(f"[red]Error verifying PR: {e}[/red]")
 
 
@@ -143,17 +145,20 @@ def index(initialize: bool, update: bool, force: bool) -> None:
     try:
         import asyncio
         from .core.repository import RepositoryIndexer
-        from .core.vector_store import CodebaseVectorStore
 
         async def run_indexing():
             if initialize or update:
-                console.print("[blue]Starting repository indexing with RedisVL...[/blue]")
+                console.print(
+                    "[blue]Starting repository indexing with RedisVL...[/blue]"
+                )
 
                 # Check if we're in a Git repository
                 indexer = RepositoryIndexer()
                 try:
                     indexer.validate_repository()
-                    console.print(f"[green]✓ Found Git repository at {indexer.repo_path}[/green]")
+                    console.print(
+                        f"[green]✓ Found Git repository at {indexer.repo_path}[/green]"
+                    )
                 except Exception as e:
                     console.print(f"[red]✗ Repository validation failed: {e}[/red]")
                     return
@@ -181,11 +186,15 @@ def index(initialize: bool, update: bool, force: bool) -> None:
 
 @cli.command()
 @click.argument("query")
-@click.option("--semantic", is_flag=True, help="Use semantic vector search", default=True)
+@click.option(
+    "--semantic", is_flag=True, help="Use semantic vector search", default=True
+)
 @click.option("--limit", default=10, help="Number of results to return")
 @click.option("--language", help="Filter by programming language")
 @click.option("--file-type", help="Filter by file extension")
-def search(query: str, semantic: bool, limit: int, language: str, file_type: str) -> None:
+def search(
+    query: str, semantic: bool, limit: int, language: str, file_type: str
+) -> None:
     """Search repository code and documentation using RedisVL."""
     search_type = "semantic vector" if semantic else "keyword"
     console.print(f"[blue]Searching repository ({search_type}): {query}[/blue]")
@@ -200,7 +209,9 @@ def search(query: str, semantic: bool, limit: int, language: str, file_type: str
             if language:
                 filters["language"] = language
             if file_type:
-                filters["file_extension"] = file_type if file_type.startswith('.') else f'.{file_type}'
+                filters["file_extension"] = (
+                    file_type if file_type.startswith(".") else f".{file_type}"
+                )
 
             with console.status("[bold green]Searching codebase..."):
                 results = await search_codebase(query, limit=limit, filters=filters)
@@ -219,13 +230,13 @@ def search(query: str, semantic: bool, limit: int, language: str, file_type: str
                 console.print(f"   Language: {result.get('language', 'Unknown')}")
                 console.print(f"   Similarity: {similarity:.1f}%")
 
-                if result.get('function_name'):
+                if result.get("function_name"):
                     console.print(f"   Function: {result['function_name']}")
-                if result.get('class_name'):
+                if result.get("class_name"):
                     console.print(f"   Class: {result['class_name']}")
 
                 # Show content preview
-                content = result.get('content', '')
+                content = result.get("content", "")
                 if content:
                     preview = content[:200] + "..." if len(content) > 200 else content
                     console.print(f"   Preview: {preview}")
@@ -237,11 +248,15 @@ def search(query: str, semantic: bool, limit: int, language: str, file_type: str
 
     except ImportError as e:
         console.print(f"[red]Missing dependencies: {e}[/red]")
-        console.print("Please install required packages and initialize the index first.")
+        console.print(
+            "Please install required packages and initialize the index first."
+        )
     except Exception as e:
         logger.error("Search failed", error=str(e))
         console.print(f"[red]Search failed: {e}[/red]")
-        console.print("Make sure the repository is indexed first: pr-agent index --initialize")
+        console.print(
+            "Make sure the repository is indexed first: pr-agent index --initialize"
+        )
 
 
 @cli.command()
@@ -274,7 +289,9 @@ def status() -> None:
                 console.print(f"  Index Name: {stats.get('index_name', 'Unknown')}")
                 console.print(f"  Total Documents: {stats.get('total_documents', 0)}")
                 console.print(f"  Index Size: {stats.get('index_size_mb', 0):.2f} MB")
-                console.print(f"  Vector Index Size: {stats.get('vector_index_size_mb', 0):.2f} MB")
+                console.print(
+                    f"  Vector Index Size: {stats.get('vector_index_size_mb', 0):.2f} MB"
+                )
 
             except Exception as e:
                 console.print(f"[red]✗ Vector Store: {e}[/red]")

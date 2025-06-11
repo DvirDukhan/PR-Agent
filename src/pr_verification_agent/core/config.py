@@ -63,17 +63,19 @@ class RepositoryConfig(BaseSettings):
     max_file_size_mb: int = Field(10, alias="REPO_MAX_FILE_SIZE_MB")
     excluded_dirs: str = Field(
         ".git,node_modules,__pycache__,.pytest_cache,build,dist,target,.venv,venv",
-        alias="REPO_EXCLUDED_DIRS"
+        alias="REPO_EXCLUDED_DIRS",
     )
     included_extensions: str = Field(
         ".py,.js,.ts,.java,.cpp,.c,.h,.hpp,.cs,.go,.rs,.rb,.php,.swift,.kt,.scala",
-        alias="REPO_INCLUDED_EXTENSIONS"
+        alias="REPO_INCLUDED_EXTENSIONS",
     )
 
     # Vector configuration
     vectorizer: str = Field("sentence-transformers", alias="REPO_VECTORIZER")
     embedding_model: str = Field("all-MiniLM-L6-v2", alias="REPO_EMBEDDING_MODEL")
-    vector_dims: int = Field(384, alias="REPO_VECTOR_DIMS")  # all-MiniLM-L6-v2 dimensions
+    vector_dims: int = Field(
+        384, alias="REPO_VECTOR_DIMS"
+    )  # all-MiniLM-L6-v2 dimensions
     distance_metric: str = Field("cosine", alias="REPO_DISTANCE_METRIC")
     vector_algorithm: str = Field("hnsw", alias="REPO_VECTOR_ALGORITHM")
 
@@ -104,26 +106,26 @@ class AppConfig(BaseSettings):
 
 class Config:
     """Main configuration class that combines all configuration sections."""
-    
+
     def __init__(self, env_file: Optional[str] = None):
         """Initialize configuration.
-        
+
         Args:
             env_file: Path to .env file. If None, looks for .env in current directory.
         """
         if env_file is None:
             env_file = Path.cwd() / ".env"
-        
+
         if Path(env_file).exists():
             load_dotenv(env_file)
-        
+
         self.jira = JiraConfig()
         self.github = GitHubConfig()
         self.ai = AIConfig()
         self.redis = RedisConfig()
         self.repository = RepositoryConfig()
         self.app = AppConfig()
-    
+
     def validate(self) -> None:
         """Validate configuration and raise errors for missing required values."""
         errors = []
@@ -142,9 +144,13 @@ class Config:
 
         # Validate AI provider configuration
         if self.ai.default_provider == "openai" and not self.ai.openai_api_key:
-            errors.append("OPENAI_API_KEY is required when using OpenAI as default provider")
+            errors.append(
+                "OPENAI_API_KEY is required when using OpenAI as default provider"
+            )
         elif self.ai.default_provider == "anthropic" and not self.ai.anthropic_api_key:
-            errors.append("ANTHROPIC_API_KEY is required when using Anthropic as default provider")
+            errors.append(
+                "ANTHROPIC_API_KEY is required when using Anthropic as default provider"
+            )
 
         if self.ai.default_provider not in ["openai", "anthropic"]:
             errors.append(

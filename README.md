@@ -1,5 +1,9 @@
 # PR Verification Agent 🤖
 
+[![CI](https://github.com/DvirDukhan/PR-Agent/actions/workflows/ci.yml/badge.svg)](https://github.com/DvirDukhan/PR-Agent/actions/workflows/ci.yml)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 A repository-aware intelligent AI agent that operates from within your codebase, indexes your repository for deep context understanding, and verifies GitHub pull requests against Jira Definition of Done (DoD) requirements. The agent ensures code changes align with business requirements while leveraging comprehensive knowledge of your existing codebase architecture and patterns.
 
 ## 🎯 Project Goals
@@ -25,7 +29,7 @@ A repository-aware intelligent AI agent that operates from within your codebase,
 
 ## 📋 Current Status
 
-This project is in **Phase 1: Foundation & Setup**. The basic project structure, configuration management, and CLI framework are implemented.
+This project is in **Phase 2: Repository & Codebase Indexing**. The foundation is complete with RedisVL integration, and CI/CD pipeline is operational.
 
 ### ✅ Completed
 - [x] Project structure and packaging setup
@@ -33,6 +37,13 @@ This project is in **Phase 1: Foundation & Setup**. The basic project structure,
 - [x] Logging configuration with structured logging
 - [x] Basic CLI framework with Rich UI
 - [x] Development environment setup
+- [x] RedisVL integration for vector storage
+- [x] Repository indexing framework
+- [x] Semantic search capabilities
+- [x] GitHub Actions CI/CD pipeline
+- [x] Multi-Python version testing (3.9-3.12)
+- [x] Code quality checks (linting, formatting, type checking)
+- [x] Security scanning and coverage reporting
 
 ### 🚧 In Progress
 - [ ] Jira integration implementation
@@ -68,16 +79,19 @@ This project is in **Phase 1: Foundation & Setup**. The basic project structure,
    pip install -r requirements.txt
    ```
 
-4. **Start Redis Stack server** (required for RedisVL):
+4. **Start Redis server**:
    ```bash
-   # Using Docker (recommended) - includes Redis with Search & Query
+   # Using Docker (recommended)
+   docker run -d --name redis -p 6379:6379 redis:latest
+
+   # Or install Redis locally
+   # macOS: brew install redis && brew services start redis
+   # Ubuntu: sudo apt install redis-server && sudo systemctl start redis
+   ```
+
+   **Note**: For full RedisVL vector capabilities, you may want Redis Stack:
+   ```bash
    docker run -d --name redis-stack -p 6379:6379 -p 8001:8001 redis/redis-stack:latest
-
-   # This also provides Redis Insight GUI at http://localhost:8001
-
-   # Or install Redis Stack locally
-   # macOS: brew install redis-stack
-   # Ubuntu: Follow Redis Stack installation guide
    ```
 
 5. **Configure environment**:
@@ -205,8 +219,22 @@ src/pr_verification_agent/
 
 ## 🧪 Development
 
-### Running Tests
+### CI/CD Pipeline
+This project uses GitHub Actions for continuous integration:
+
+- **Multi-Python Testing**: Tests against Python 3.9, 3.10, 3.11, and 3.12
+- **Redis Stack Integration**: Uses Redis with Search & Query capabilities
+- **Code Quality**: Automated linting, formatting, and type checking
+- **Security Scanning**: Bandit security analysis
+- **Coverage Reporting**: Minimum 10% coverage (targeting 80%+)
+
+See [CI_SETUP.md](CI_SETUP.md) for detailed CI configuration.
+
+### Running Tests Locally
 ```bash
+# Start Redis (required for integration tests)
+docker run -d --name redis -p 6379:6379 redis:latest
+
 # Run all tests
 pytest
 
